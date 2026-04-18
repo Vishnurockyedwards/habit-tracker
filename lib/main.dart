@@ -3,9 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'data/providers.dart';
 import 'navigation/app_router.dart';
+import 'notifications/notification_service.dart';
 import 'theme/app_theme.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService.instance.init();
   runApp(const ProviderScope(child: HabitTrackerApp()));
 }
 

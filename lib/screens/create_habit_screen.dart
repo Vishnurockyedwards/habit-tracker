@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../data/database.dart';
 import '../data/providers.dart';
+import '../notifications/notification_service.dart';
 import '../theme/tokens.dart';
 import '../widgets/habit_icon.dart';
 
@@ -267,6 +268,14 @@ class _CreateHabitScreenState extends ConsumerState<CreateHabitScreen> {
       reminderMinutes: Value(reminderMinutes),
     ));
     await db.upsertStreak(StreaksCompanion.insert(habitId: Value(id)));
+
+    if (reminderMinutes != null) {
+      await NotificationService.instance.requestPermissions();
+      final saved = await db.getHabit(id);
+      if (saved != null) {
+        await NotificationService.instance.scheduleForHabit(saved);
+      }
+    }
 
     if (!mounted) return;
     setState(() => _saving = false);

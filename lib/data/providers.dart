@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../notifications/notification_service.dart';
 import 'database.dart';
 import 'date_key.dart';
 import 'seed.dart';
@@ -14,6 +15,8 @@ final databaseSeedProvider = FutureProvider<void>((ref) async {
   final db = ref.watch(databaseProvider);
   await seedIfEmpty(db);
   await db.recomputeAllStreaks();
+  final habits = await db.watchActiveHabits().first;
+  await NotificationService.instance.rescheduleAll(habits);
 });
 
 final activeHabitsProvider = StreamProvider<List<Habit>>((ref) {
