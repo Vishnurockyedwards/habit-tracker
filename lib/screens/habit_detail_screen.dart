@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../data/database.dart';
 import '../data/date_key.dart';
 import '../data/providers.dart';
 import '../theme/tokens.dart';
+import '../widgets/habit_actions_sheet.dart';
 import '../widgets/habit_heatmap.dart';
 import '../widgets/habit_icon.dart';
 
@@ -20,12 +22,28 @@ class HabitDetailScreen extends ConsumerWidget {
     final completionsAsync = ref.watch(habitCompletionsProvider(habitId));
     final streaksAsync = ref.watch(allStreaksProvider);
 
+    final habit = habitAsync.asData?.value;
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          habitAsync.asData?.value?.name ?? 'Habit',
+          habit?.name ?? 'Habit',
           overflow: TextOverflow.ellipsis,
         ),
+        actions: [
+          if (habit != null) ...[
+            IconButton(
+              tooltip: 'Edit',
+              icon: const Icon(Icons.edit_outlined),
+              onPressed: () => context.push('/edit/${habit.id}'),
+            ),
+            IconButton(
+              tooltip: 'More',
+              icon: const Icon(Icons.more_vert),
+              onPressed: () =>
+                  showHabitActionsSheet(context, ref: ref, habit: habit),
+            ),
+          ],
+        ],
       ),
       body: habitAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),

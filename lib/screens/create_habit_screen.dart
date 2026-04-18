@@ -14,7 +14,9 @@ import '../widgets/habit_icon.dart';
 enum FrequencyType { daily, xPerWeek, custom }
 
 class CreateHabitScreen extends ConsumerStatefulWidget {
-  const CreateHabitScreen({super.key});
+  const CreateHabitScreen({super.key, this.editingId});
+
+  final int? editingId;
 
   @override
   ConsumerState<CreateHabitScreen> createState() =>
@@ -31,9 +33,64 @@ class _CreateHabitScreenState extends ConsumerState<CreateHabitScreen> {
   Color _color = AppColors.habitPalette.first;
   FrequencyType _frequency = FrequencyType.daily;
   int _timesPerWeek = 3;
-  final Set<int> _customDays = {1, 3, 5};
+  final Set<int> _customDays = {0, 2, 4};
   TimeOfDay? _reminder;
   bool _saving = false;
+  bool _loading = false;
+
+  bool get _isEditing => widget.editingId != null;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isEditing) {
+      _loadHabit();
+    }
+  }
+
+  Future<void> _loadHabit() async {
+    setState(() => _loading = true);
+    final db = ref.read(databaseProvider);
+    final habit = await db.getHabit(widget.editingId!);
+    if (!mounted || habit == null) {
+      setState(() => _loading = false);
+      return;
+    }
+    _nameCtrl.text = habit.name;
+    _icon = habit.icon;
+    _color = colorFromHex(habit.color);
+    final target = habit.targetValue;
+    _targetCtrl.text = target == target.roundToDouble()
+        ? target.toInt().toString()
+        : target.toString();
+    _unitCtrl.text = habit.unit ?? '';
+    switch (habit.frequencyType) {
+      case 'x_per_week':
+        _frequency = FrequencyType.xPerWeek;
+        final cfg = habit.frequencyCfg == null
+            ? const <String, dynamic>{}
+            : jsonDecode(habit.frequencyCfg!) as Map<String, dynamic>;
+        _timesPerWeek = (cfg['timesPerWeek'] as num?)?.toInt() ?? 3;
+        break;
+      case 'custom':
+        _frequency = FrequencyType.custom;
+        final cfg = habit.frequencyCfg == null
+            ? const <String, dynamic>{}
+            : jsonDecode(habit.frequencyCfg!) as Map<String, dynamic>;
+        final days =
+            (cfg['days'] as List?)?.map((e) => (e as num).toInt()) ?? const [];
+        _customDays
+          ..clear()
+          ..addAll(days);
+        break;
+      default:
+        _frequency = FrequencyType.daily;
+    }
+    final minutes = habit.reminderMinutes;
+    _reminder =
+        minutes == null ? null : TimeOfDay(hour: minutes ~/ 60, minute: minutes % 60);
+    setState(() => _loading = false);
+  }
 
   @override
   void dispose() {
@@ -46,8 +103,14 @@ class _CreateHabitScreenState extends ConsumerState<CreateHabitScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    if (_loading) {
+      return Scaffold(
+        appBar: AppBar(title: Text(_isEditing ? 'Edit Habit' : 'New Habit')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
     return Scaffold(
-      appBar: AppBar(title: const Text('New Habit')),
+      appBar: AppBar(title: Text(_isEditing ? 'Edit Habit' : 'New Habit')),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -207,7 +270,7 @@ class _CreateHabitScreenState extends ConsumerState<CreateHabitScreen> {
                       width: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Save habit'),
+                  : Text(_isEditing ? 'Save changes' : 'Save habit'),
             ),
           ],
         ),
@@ -257,33 +320,56 @@ class _CreateHabitScreenState extends ConsumerState<CreateHabitScreen> {
         break;
     }
 
-    final id = await db.insertHabit(HabitsCompanion.insert(
-      name: _nameCtrl.text.trim(),
-      icon: Value(_icon),
-      color: Value(hexFromColor(_color)),
-      frequencyType: Value(frequencyType),
-      frequencyCfg: Value(frequencyCfg),
-      targetValue: Value(target),
-      unit: Value(unit.isEmpty ? null : unit),
-      reminderMinutes: Value(reminderMinutes),
-    ));
-    await db.upsertStreak(StreaksCompanion.insert(habitId: Value(id)));
+    final int habitId;
+    if (_isEditing) {
+      habitId = widget.editingId!;
+      await (db.update(db.habits)..where((h) => h.id.equals(habitId))).write(
+        HabitsCompanion(
+          name: Value(_nameCtrl.text.trim()),
+          icon: Value(_icon),
+          color: Value(hexFromColor(_color)),
+          frequencyType: Value(frequencyType),
+          frequencyCfg: Value(frequencyCfg),
+          targetValue: Value(target),
+          unit: Value(unit.isEmpty ? null : unit),
+          reminderMinutes: Value(reminderMinutes),
+        ),
+      );
+      await db.recomputeStreak(habitId);
+    } else {
+      habitId = await db.insertHabit(HabitsCompanion.insert(
+        name: _nameCtrl.text.trim(),
+        icon: Value(_icon),
+        color: Value(hexFromColor(_color)),
+        frequencyType: Value(frequencyType),
+        frequencyCfg: Value(frequencyCfg),
+        targetValue: Value(target),
+        unit: Value(unit.isEmpty ? null : unit),
+        reminderMinutes: Value(reminderMinutes),
+      ));
+      await db.upsertStreak(StreaksCompanion.insert(habitId: Value(habitId)));
+    }
 
     if (reminderMinutes != null) {
       await NotificationService.instance.requestPermissions();
-      final saved = await db.getHabit(id);
-      if (saved != null) {
-        await NotificationService.instance.scheduleForHabit(saved);
-      }
+    }
+    final saved = await db.getHabit(habitId);
+    if (saved != null) {
+      await NotificationService.instance.scheduleForHabit(saved);
     }
 
     if (!mounted) return;
     setState(() => _saving = false);
+    final name = _nameCtrl.text.trim();
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Saved "${_nameCtrl.text.trim()}"')),
+      SnackBar(content: Text(_isEditing ? 'Updated "$name"' : 'Saved "$name"')),
     );
-    _resetForm();
-    if (mounted) context.go('/today');
+    if (!_isEditing) {
+      _resetForm();
+      if (mounted) context.go('/today');
+    } else if (mounted) {
+      context.pop();
+    }
   }
 
   void _resetForm() {
@@ -297,7 +383,7 @@ class _CreateHabitScreenState extends ConsumerState<CreateHabitScreen> {
       _timesPerWeek = 3;
       _customDays
         ..clear()
-        ..addAll({1, 3, 5});
+        ..addAll({0, 2, 4});
       _reminder = null;
     });
   }

@@ -7,6 +7,7 @@ import '../data/database.dart';
 import '../data/date_key.dart';
 import '../data/providers.dart';
 import '../theme/tokens.dart';
+import '../widgets/habit_actions_sheet.dart';
 import '../widgets/habit_tile.dart';
 
 class TodayScreen extends ConsumerWidget {
@@ -73,6 +74,11 @@ class TodayScreen extends ConsumerWidget {
                       streak: streakById[habit.id],
                       completed: completedIds.contains(habit.id),
                       onTap: () => _toggle(ref, habit),
+                      onLongPress: () => showHabitActionsSheet(
+                        context,
+                        ref: ref,
+                        habit: habit,
+                      ),
                     ),
                 ],
             ],
