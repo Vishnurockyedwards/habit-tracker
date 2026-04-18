@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../screens/calendar_screen.dart';
 import '../screens/create_habit_screen.dart';
 import '../screens/habit_detail_screen.dart';
 import '../screens/profile_screen.dart';
@@ -14,6 +15,11 @@ final appRouter = GoRouter(
   navigatorKey: _rootKey,
   initialLocation: '/today',
   routes: [
+    GoRoute(
+      path: '/create',
+      parentNavigatorKey: _rootKey,
+      builder: (context, state) => const CreateHabitScreen(),
+    ),
     GoRoute(
       path: '/edit/:id',
       parentNavigatorKey: _rootKey,
@@ -43,8 +49,7 @@ final appRouter = GoRouter(
                 GoRoute(
                   path: 'habit/:id',
                   builder: (context, state) {
-                    final id =
-                        int.parse(state.pathParameters['id'] ?? '0');
+                    final id = int.parse(state.pathParameters['id'] ?? '0');
                     return HabitDetailScreen(habitId: id);
                   },
                 ),
@@ -55,8 +60,8 @@ final appRouter = GoRouter(
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/create',
-              builder: (context, state) => const CreateHabitScreen(),
+              path: '/calendar',
+              builder: (context, state) => const CalendarScreen(),
             ),
           ],
         ),

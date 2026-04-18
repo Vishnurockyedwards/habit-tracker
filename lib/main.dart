@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'data/prefs.dart';
 import 'data/providers.dart';
+import 'data/tweaks.dart';
 import 'navigation/app_router.dart';
 import 'notifications/notification_service.dart';
 import 'theme/app_theme.dart';
@@ -26,6 +27,8 @@ class _HabitTrackerAppState extends ConsumerState<HabitTrackerApp> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(themeModeProvider.notifier).load();
+      ref.read(tweaksProvider.notifier).load();
+      ref.read(hasOnboardedProvider.notifier).load();
     });
   }
 
