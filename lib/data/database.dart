@@ -135,6 +135,9 @@ class AppDatabase extends _$AppDatabase {
     if (habit == null) {
       throw StateError('Habit $habitId not found');
     }
+    final prev = await getStreak(habitId);
+    final prevCurrent = prev?.currentStreak ?? 0;
+
     final completions = await (select(habitCompletions)
           ..where((c) => c.habitId.equals(habitId)))
         .get();
@@ -145,6 +148,21 @@ class AppDatabase extends _$AppDatabase {
       asOf: asOf ?? DateTime.now(),
       freezes: habit.freezesRemaining,
     );
+
+    final milestones = FreezePolicy.milestonesCrossed(
+      prevStreak: prevCurrent,
+      newStreak: result.currentStreak,
+    );
+    if (milestones > 0) {
+      final newFreezes =
+          FreezePolicy.cap(habit.freezesRemaining + milestones);
+      if (newFreezes != habit.freezesRemaining) {
+        await (update(habits)..where((h) => h.id.equals(habitId))).write(
+          HabitsCompanion(freezesRemaining: Value(newFreezes)),
+        );
+      }
+    }
+
     await into(streaks).insertOnConflictUpdate(
       StreaksCompanion(
         habitId: Value(habitId),

@@ -2,6 +2,31 @@ import 'dart:convert';
 
 import '../data/date_key.dart';
 
+/// Rules for awarding streak shields (freezes). Freezes act as a tolerance
+/// buffer — the engine already tolerates up to `freezesRemaining` missed
+/// required days per streak; this policy decides when to grant new shields.
+class FreezePolicy {
+  const FreezePolicy._();
+
+  /// Grant one shield for every fresh N-day milestone in the current streak.
+  static const int awardEvery = 7;
+
+  /// Maximum shields a single habit can hold at once.
+  static const int maxFreezes = 3;
+
+  /// How many milestones were newly crossed going from [prevStreak] to
+  /// [newStreak]. Negative or unchanged progress returns 0.
+  static int milestonesCrossed({
+    required int prevStreak,
+    required int newStreak,
+  }) {
+    if (newStreak <= prevStreak) return 0;
+    return (newStreak ~/ awardEvery) - (prevStreak ~/ awardEvery);
+  }
+
+  static int cap(int freezes) => freezes.clamp(0, maxFreezes);
+}
+
 class StreakResult {
   final int currentStreak;
   final int longestStreak;

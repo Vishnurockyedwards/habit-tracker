@@ -139,6 +139,20 @@ class _DetailBody extends StatelessWidget {
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: _StatTile(
+                label: 'Shields',
+                value: '${habit.freezesRemaining}',
+                suffix: '/ 3',
+                icon: Icons.shield,
+                iconColor: habitColor,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Row(
+          children: [
+            Expanded(
+              child: _StatTile(
                 label: 'Last 30 days',
                 value: '$last30',
                 suffix: '/ 30',

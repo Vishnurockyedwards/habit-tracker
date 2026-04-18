@@ -85,6 +85,22 @@ class HabitTile extends StatelessWidget {
                               ),
                             ),
                           ],
+                          if (habit.freezesRemaining > 0) ...[
+                            const SizedBox(width: AppSpacing.sm),
+                            Icon(
+                              Icons.shield,
+                              size: 13,
+                              color: habitColor,
+                            ),
+                            const SizedBox(width: 2),
+                            Text(
+                              '${habit.freezesRemaining}',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: habitColor,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ],
