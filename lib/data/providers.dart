@@ -46,3 +46,11 @@ final habitCompletionsProvider =
   final db = ref.watch(databaseProvider);
   return db.watchCompletionsForHabit(habitId);
 });
+
+/// All completions since a given `yyyy-MM-dd`. Used by Stats (last 91 days
+/// aggregate heatmap) and Calendar (current month grid).
+final completionsSinceProvider =
+    StreamProvider.family<List<HabitCompletion>, String>((ref, sinceYmd) {
+  final db = ref.watch(databaseProvider);
+  return db.watchCompletionsSince(sinceYmd);
+});

@@ -98,6 +98,15 @@ class AppDatabase extends _$AppDatabase {
         .watch();
   }
 
+  /// All completions with `date >= sinceYmd`, newest first. Used by the
+  /// Stats and Calendar aggregates to avoid scanning the full history.
+  Stream<List<HabitCompletion>> watchCompletionsSince(String sinceYmd) {
+    return (select(habitCompletions)
+          ..where((c) => c.date.isBiggerOrEqualValue(sinceYmd))
+          ..orderBy([(c) => OrderingTerm.desc(c.date)]))
+        .watch();
+  }
+
   Future<void> toggleCompletion({
     required int habitId,
     required String date,
