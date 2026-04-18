@@ -13,6 +13,7 @@ final databaseProvider = Provider<AppDatabase>((ref) {
 final databaseSeedProvider = FutureProvider<void>((ref) async {
   final db = ref.watch(databaseProvider);
   await seedIfEmpty(db);
+  await db.recomputeAllStreaks();
 });
 
 final activeHabitsProvider = StreamProvider<List<Habit>>((ref) {

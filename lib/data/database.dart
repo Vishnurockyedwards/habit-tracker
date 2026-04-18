@@ -1,6 +1,8 @@
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
+import '../logic/streak_engine.dart';
+
 part 'database.g.dart';
 
 class Habits extends Table {
@@ -114,6 +116,7 @@ class AppDatabase extends _$AppDatabase {
         ),
       );
     }
+    await recomputeStreak(habitId);
   }
 
   Future<Streak?> getStreak(int habitId) =>
@@ -122,6 +125,41 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> upsertStreak(StreaksCompanion streak) =>
       into(streaks).insertOnConflictUpdate(streak);
+
+  Future<StreakResult> recomputeStreak(int habitId, {DateTime? asOf}) async {
+    final habit = await (select(habits)..where((h) => h.id.equals(habitId)))
+        .getSingleOrNull();
+    if (habit == null) {
+      throw StateError('Habit $habitId not found');
+    }
+    final completions = await (select(habitCompletions)
+          ..where((c) => c.habitId.equals(habitId)))
+        .get();
+    final result = StreakEngine.compute(
+      frequencyType: habit.frequencyType,
+      frequencyCfg: habit.frequencyCfg,
+      completedDates: completions.map((c) => c.date).toSet(),
+      asOf: asOf ?? DateTime.now(),
+      freezes: habit.freezesRemaining,
+    );
+    await into(streaks).insertOnConflictUpdate(
+      StreaksCompanion(
+        habitId: Value(habitId),
+        currentStreak: Value(result.currentStreak),
+        longestStreak: Value(result.longestStreak),
+        lastCompletedDate: Value(result.lastCompletedDate),
+        totalCompletions: Value(result.totalCompletions),
+      ),
+    );
+    return result;
+  }
+
+  Future<void> recomputeAllStreaks({DateTime? asOf}) async {
+    final all = await select(habits).get();
+    for (final h in all) {
+      await recomputeStreak(h.id, asOf: asOf);
+    }
+  }
 
   Stream<List<Streak>> watchAllStreaks() => select(streaks).watch();
 }

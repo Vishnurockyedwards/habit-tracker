@@ -79,4 +79,6 @@ Future<void> seedIfEmpty(AppDatabase db) async {
       ),
     ]);
   });
+
+  await db.recomputeAllStreaks();
 }
