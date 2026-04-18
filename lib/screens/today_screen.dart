@@ -14,6 +14,7 @@ import '../theme/tokens.dart';
 import '../widgets/habit_actions_sheet.dart';
 import '../widgets/sprout/companion_card.dart';
 import '../widgets/sprout/habit_row.dart';
+import '../widgets/sprout/level_up_overlay.dart';
 import '../widgets/sprout/streak_chip.dart';
 import '../widgets/sprout/xp_ring.dart';
 import '../widgets/template_picker.dart';
@@ -42,13 +43,41 @@ class TodayScreen extends ConsumerWidget {
   }
 }
 
-class _TodayContent extends ConsumerWidget {
+class _TodayContent extends ConsumerStatefulWidget {
   const _TodayContent({required this.habits});
 
   final List<Habit> habits;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_TodayContent> createState() => _TodayContentState();
+}
+
+class _TodayContentState extends ConsumerState<_TodayContent> {
+  int? _prevLevel;
+
+  void _maybeShowLevelUp(
+    int newLevel,
+    CompanionKind companion,
+    AccentPalette accent,
+  ) {
+    final prev = _prevLevel;
+    _prevLevel = newLevel;
+    // Don't fire on the first settle after load — only on actual crossings.
+    if (prev == null || newLevel <= prev) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showLevelUp(
+        context,
+        level: newLevel,
+        companion: companion,
+        accent: accent,
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final habits = widget.habits;
     final theme = Theme.of(context);
     final tweaks = ref.watch(tweaksProvider);
     final accent = ref.watch(accentPaletteProvider);
@@ -74,6 +103,8 @@ class _TodayContent extends ConsumerWidget {
     final level = XpMath.levelFor(totalXp);
     final progress = XpMath.progressInLevel(totalXp);
     final xpToday = completedCount * XpMath.perCompletion;
+
+    _maybeShowLevelUp(level, tweaks.companion, accent);
 
     final now = DateTime.now();
     final dateLabel =

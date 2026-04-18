@@ -99,19 +99,25 @@ final densityProvider = Provider<DensityTokens>(
   (ref) => densityTokens[ref.watch(tweaksProvider).density]!,
 );
 
+/// Overridden in `main()` with the persisted value so the first frame is
+/// correct (avoids a Today → Onboarding flash on fresh installs or
+/// returning-user glitches on cold start).
+final initialOnboardedProvider = Provider<bool>((ref) => false);
+
 class OnboardingController extends Notifier<bool> {
   @override
-  bool build() => true; // assume onboarded until load() tells us otherwise
-
-  Future<void> load() async {
-    final prefs = await ref.read(sharedPreferencesProvider.future);
-    state = prefs.getBool(_kHasOnboardedKey) ?? false;
-  }
+  bool build() => ref.watch(initialOnboardedProvider);
 
   Future<void> markDone() async {
     state = true;
     final prefs = await ref.read(sharedPreferencesProvider.future);
     await prefs.setBool(_kHasOnboardedKey, true);
+  }
+
+  Future<void> reset() async {
+    state = false;
+    final prefs = await ref.read(sharedPreferencesProvider.future);
+    await prefs.setBool(_kHasOnboardedKey, false);
   }
 }
 
