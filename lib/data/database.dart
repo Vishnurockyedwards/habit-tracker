@@ -70,6 +70,9 @@ class AppDatabase extends _$AppDatabase {
         .watch();
   }
 
+  Future<Habit?> getHabit(int id) =>
+      (select(habits)..where((h) => h.id.equals(id))).getSingleOrNull();
+
   Future<int> insertHabit(HabitsCompanion habit) =>
       into(habits).insert(habit);
 

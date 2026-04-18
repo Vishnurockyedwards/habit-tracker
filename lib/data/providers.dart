@@ -31,3 +31,15 @@ final allStreaksProvider = StreamProvider<List<Streak>>((ref) {
   final db = ref.watch(databaseProvider);
   return db.watchAllStreaks();
 });
+
+final habitByIdProvider =
+    FutureProvider.family<Habit?, int>((ref, id) async {
+  final db = ref.watch(databaseProvider);
+  return db.getHabit(id);
+});
+
+final habitCompletionsProvider =
+    StreamProvider.family<List<HabitCompletion>, int>((ref, habitId) {
+  final db = ref.watch(databaseProvider);
+  return db.watchCompletionsForHabit(habitId);
+});

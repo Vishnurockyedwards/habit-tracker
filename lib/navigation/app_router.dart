@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../screens/create_habit_screen.dart';
+import '../screens/habit_detail_screen.dart';
 import '../screens/profile_screen.dart';
 import '../screens/stats_screen.dart';
 import '../screens/today_screen.dart';
@@ -30,6 +31,16 @@ final appRouter = GoRouter(
             GoRoute(
               path: '/stats',
               builder: (context, state) => const StatsScreen(),
+              routes: [
+                GoRoute(
+                  path: 'habit/:id',
+                  builder: (context, state) {
+                    final id =
+                        int.parse(state.pathParameters['id'] ?? '0');
+                    return HabitDetailScreen(habitId: id);
+                  },
+                ),
+              ],
             ),
           ],
         ),
