@@ -36,7 +36,9 @@ class Companion extends StatelessWidget {
     final enabled = animate && !reduced;
     final g = growth.clamp(0.0, 1.0);
 
-    return LifeTicker(
+    return Semantics(
+      label: '${companionName(kind)} — ${(g * 100).round()}% grown',
+      child: LifeTicker(
       enabled: enabled,
       builder: (context, life) {
         Widget child(double smoothed) {
@@ -76,6 +78,7 @@ class Companion extends StatelessWidget {
           builder: (context, value, _) => child(value),
         );
       },
+      ),
     );
   }
 }

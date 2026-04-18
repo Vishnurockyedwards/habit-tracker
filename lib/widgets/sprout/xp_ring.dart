@@ -23,7 +23,11 @@ class XpRing extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final clamped = progress.clamp(0.0, 1.0);
-    return SizedBox(
+    final reduced = MediaQuery.of(context).disableAnimations;
+    return Semantics(
+      label:
+          'Level $level, ${(clamped * 100).round()} percent to next level',
+      child: SizedBox(
       width: size,
       height: size,
       child: Stack(
@@ -31,7 +35,9 @@ class XpRing extends StatelessWidget {
         children: [
           TweenAnimationBuilder<double>(
             tween: Tween(begin: clamped, end: clamped),
-            duration: const Duration(milliseconds: 800),
+            duration: reduced
+                ? Duration.zero
+                : const Duration(milliseconds: 800),
             curve: const Cubic(0.2, 0.8, 0.2, 1),
             builder: (context, value, _) => CustomPaint(
               size: Size(size, size),
@@ -63,6 +69,7 @@ class XpRing extends StatelessWidget {
             ],
           ),
         ],
+      ),
       ),
     );
   }

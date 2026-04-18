@@ -53,15 +53,6 @@ final appRouter = GoRouter(
             GoRoute(
               path: '/stats',
               builder: (context, state) => const StatsScreen(),
-              routes: [
-                GoRoute(
-                  path: 'habit/:id',
-                  builder: (context, state) {
-                    final id = int.parse(state.pathParameters['id'] ?? '0');
-                    return HabitDetailScreen(habitId: id);
-                  },
-                ),
-              ],
             ),
           ],
         ),

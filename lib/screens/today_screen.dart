@@ -13,6 +13,7 @@ import '../logic/xp.dart';
 import '../theme/tokens.dart';
 import '../widgets/habit_actions_sheet.dart';
 import '../widgets/sprout/companion_card.dart';
+import '../widgets/sprout/dashed_border_button.dart';
 import '../widgets/sprout/habit_row.dart';
 import '../widgets/sprout/level_up_overlay.dart';
 import '../widgets/sprout/streak_chip.dart';
@@ -179,7 +180,10 @@ class _TodayContentState extends ConsumerState<_TodayContent> {
           if (i < sorted.length - 1) SizedBox(height: density.rowGap),
         ],
         const SizedBox(height: 14),
-        _AddHabitButton(onTap: () => context.push('/create')),
+        DashedBorderButton(
+          label: '+ Add a habit',
+          onTap: () => context.push('/create'),
+        ),
       ],
     );
   }
@@ -273,38 +277,3 @@ class _Greeting extends StatelessWidget {
   }
 }
 
-class _AddHabitButton extends StatelessWidget {
-  const _AddHabitButton({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: SP.muted,
-            width: 1.5,
-            style: BorderStyle.solid,
-          ),
-        ),
-        alignment: Alignment.center,
-        child: const Text(
-          '+ Add a habit',
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: SP.muted,
-            letterSpacing: 0.3,
-          ),
-        ),
-      ),
-    );
-  }
-}

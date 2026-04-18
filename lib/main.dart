@@ -59,6 +59,7 @@ class _HabitTrackerAppState extends ConsumerState<HabitTrackerApp> {
         debugShowCheckedModeBanner: false,
         color: SP.cream,
         home: const OnboardingScreen(),
+        builder: _clampTextScale,
       );
     }
 
@@ -69,6 +70,20 @@ class _HabitTrackerAppState extends ConsumerState<HabitTrackerApp> {
       themeMode: themeMode,
       routerConfig: appRouter,
       debugShowCheckedModeBanner: false,
+      builder: _clampTextScale,
+    );
+  }
+
+  /// Clamp OS text scaling to [0.85, 1.4]×. The Sprout layouts rely on
+  /// tight Fraunces/Inter sizing; allowing 2× breaks hero cards and grid
+  /// cells (per FEATURES §8 "cap at 1.4× to preserve layout").
+  static Widget _clampTextScale(BuildContext context, Widget? child) {
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(
+        textScaler: MediaQuery.textScalerOf(context)
+            .clamp(minScaleFactor: 0.85, maxScaleFactor: 1.4),
+      ),
+      child: child ?? const SizedBox.shrink(),
     );
   }
 }

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../data/habit_templates.dart';
 import '../data/providers.dart';
+import '../data/tweaks.dart';
 import '../notifications/notification_service.dart';
 import '../theme/tokens.dart';
 import 'habit_icon.dart';
@@ -21,62 +22,75 @@ class _TemplatePickerState extends ConsumerState<TemplatePicker> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final accent = ref.watch(accentPaletteProvider);
     return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        AppSpacing.lg,
-        AppSpacing.md,
-        AppSpacing.xxl,
-      ),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 110),
       children: [
-        Text(
-          'Start with a quick pick',
-          style: theme.textTheme.headlineSmall,
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        Text(
-          'Tap the habits you want to build. You can edit or add more later.',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        for (var i = 0; i < kHabitTemplates.length; i++)
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-            child: _TemplateTile(
-              template: kHabitTemplates[i],
-              selected: _selected.contains(i),
-              onToggle: () => setState(() {
-                if (_selected.contains(i)) {
-                  _selected.remove(i);
-                } else {
-                  _selected.add(i);
-                }
-              }),
+        Text.rich(
+          TextSpan(
+            style: const TextStyle(
+              fontFamily: 'Fraunces',
+              fontSize: 26,
+              fontWeight: FontWeight.w500,
+              letterSpacing: -0.4,
+              color: SP.cocoa,
+              height: 1.1,
             ),
-          ),
-        const SizedBox(height: AppSpacing.lg),
-        FilledButton.icon(
-          onPressed: _selected.isEmpty || _saving ? null : _addSelected,
-          icon: _saving
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.add),
-          label: Text(
-            _selected.isEmpty
-                ? 'Pick at least one'
-                : 'Add ${_selected.length} habit${_selected.length == 1 ? '' : 's'}',
+            children: [
+              const TextSpan(text: 'Plant your first '),
+              TextSpan(
+                text: 'habit',
+                style: TextStyle(
+                  fontStyle: FontStyle.italic,
+                  color: accent.deep,
+                ),
+              ),
+              const TextSpan(text: '.'),
+            ],
           ),
         ),
-        const SizedBox(height: AppSpacing.sm),
-        TextButton(
-          onPressed: _saving ? null : () => context.go('/create'),
-          child: const Text('Or create your own'),
+        const SizedBox(height: 8),
+        const Text(
+          'Tap the habits you want to start with. Edit or add more anytime.',
+          style: TextStyle(
+            fontSize: 14,
+            color: SP.cocoaSoft,
+            height: 1.5,
+          ),
+        ),
+        const SizedBox(height: 20),
+        for (var i = 0; i < kHabitTemplates.length; i++) ...[
+          _TemplateTile(
+            template: kHabitTemplates[i],
+            selected: _selected.contains(i),
+            accent: accent,
+            onToggle: () => setState(() {
+              if (_selected.contains(i)) {
+                _selected.remove(i);
+              } else {
+                _selected.add(i);
+              }
+            }),
+          ),
+          if (i < kHabitTemplates.length - 1) const SizedBox(height: 6),
+        ],
+        const SizedBox(height: 20),
+        _PrimaryCta(
+          accent: accent,
+          busy: _saving,
+          enabled: _selected.isNotEmpty,
+          label: _selected.isEmpty
+              ? 'Pick at least one'
+              : 'Add ${_selected.length} habit${_selected.length == 1 ? '' : 's'} 🌱',
+          onPressed: _selected.isEmpty || _saving ? null : _addSelected,
+        ),
+        const SizedBox(height: 8),
+        Center(
+          child: TextButton(
+            onPressed: _saving ? null : () => context.go('/create'),
+            style: TextButton.styleFrom(foregroundColor: accent.deep),
+            child: const Text('Or create your own'),
+          ),
         ),
       ],
     );
@@ -90,7 +104,6 @@ class _TemplatePickerState extends ConsumerState<TemplatePicker> {
         if (_selected.contains(i)) kHabitTemplates[i],
     ];
     final ids = await applyTemplates(db, chosen);
-    // Any template with a reminder wants notifications.
     if (chosen.any((t) => t.reminderMinutes != null)) {
       await NotificationService.instance.requestPermissions();
     }
@@ -104,7 +117,7 @@ class _TemplatePickerState extends ConsumerState<TemplatePicker> {
     if (!mounted) return;
     setState(() => _saving = false);
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Added ${ids.length} habits')),
+      SnackBar(content: Text('Planted ${ids.length} 🌱')),
     );
   }
 }
@@ -113,61 +126,148 @@ class _TemplateTile extends StatelessWidget {
   const _TemplateTile({
     required this.template,
     required this.selected,
+    required this.accent,
     required this.onToggle,
   });
 
   final HabitTemplate template;
   final bool selected;
+  final AccentPalette accent;
   final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final color = colorFromHex(template.color);
     return Material(
-      color: selected
-          ? color.withValues(alpha: 0.12)
-          : theme.colorScheme.surfaceContainerHighest,
-      borderRadius: const BorderRadius.all(AppRadius.cardRadius),
+      color: selected ? accent.soft : SP.creamSoft,
+      borderRadius: BorderRadius.circular(14),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onToggle,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selected ? accent.main : SP.hairline,
+              width: selected ? 1.5 : 1,
+            ),
+          ),
           child: Row(
             children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: color.withValues(alpha: 0.18),
-                child: Icon(iconFor(template.icon), color: color, size: 20),
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: SP.cream,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  emojiFor(template.icon),
+                  style: const TextStyle(fontSize: 20),
+                ),
               ),
-              const SizedBox(width: AppSpacing.md),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(template.name, style: theme.textTheme.titleMedium),
+                    Text(
+                      template.name,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: SP.cocoa,
+                      ),
+                    ),
                     if (template.blurb != null) ...[
                       const SizedBox(height: 2),
                       Text(
                         template.blurb!,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: SP.muted,
                         ),
                       ),
                     ],
                   ],
                 ),
               ),
-              Icon(
-                selected
-                    ? Icons.check_circle
-                    : Icons.radio_button_unchecked,
-                color: selected ? color : theme.colorScheme.outlineVariant,
+              Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: selected ? accent.main : Colors.white,
+                  border: Border.all(
+                    color: selected ? accent.main : SP.mutedSoft,
+                    width: 2,
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: selected
+                    ? const Icon(Icons.check, size: 14, color: Colors.white)
+                    : null,
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _PrimaryCta extends StatelessWidget {
+  const _PrimaryCta({
+    required this.accent,
+    required this.busy,
+    required this.enabled,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final AccentPalette accent;
+  final bool busy;
+  final bool enabled;
+  final String label;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: enabled && !busy
+            ? [BoxShadow(color: accent.deep, offset: const Offset(0, 4))]
+            : null,
+      ),
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: enabled ? accent.main : SP.mutedSoft,
+          foregroundColor: SP.onAccent,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          textStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.3,
+          ),
+        ),
+        child: busy
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: SP.onAccent,
+                ),
+              )
+            : Text(label),
       ),
     );
   }

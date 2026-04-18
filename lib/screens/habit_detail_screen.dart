@@ -10,6 +10,7 @@ import '../logic/xp.dart';
 import '../theme/tokens.dart';
 import '../widgets/habit_actions_sheet.dart';
 import '../widgets/habit_icon.dart';
+import '../widgets/sprout/dashed_border_button.dart';
 import '../widgets/sprout/mini_heat_strip.dart';
 
 class HabitDetailScreen extends ConsumerWidget {
@@ -542,7 +543,10 @@ class _NotesSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        InkWell(
+        DashedBorderButton(
+          label: '+ Add note',
+          verticalPadding: 10,
+          radius: 12,
           onTap: () {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -550,23 +554,6 @@ class _NotesSection extends StatelessWidget {
               ),
             );
           },
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: SP.muted, width: 1.5),
-            ),
-            alignment: Alignment.center,
-            child: const Text(
-              '+ Add note',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: SP.muted,
-              ),
-            ),
-          ),
         ),
       ],
     );
