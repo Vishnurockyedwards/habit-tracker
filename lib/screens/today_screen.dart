@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+
+import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -9,12 +12,45 @@ import '../theme/tokens.dart';
 import '../widgets/habit_actions_sheet.dart';
 import '../widgets/habit_tile.dart';
 import '../widgets/template_picker.dart';
+import '../widgets/today_hero_card.dart';
 
-class TodayScreen extends ConsumerWidget {
+class TodayScreen extends ConsumerStatefulWidget {
   const TodayScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TodayScreen> createState() => _TodayScreenState();
+}
+
+class _TodayScreenState extends ConsumerState<TodayScreen> {
+  late final ConfettiController _confetti;
+  int? _prevCompleted;
+
+  @override
+  void initState() {
+    super.initState();
+    _confetti = ConfettiController(duration: const Duration(seconds: 2));
+  }
+
+  @override
+  void dispose() {
+    _confetti.dispose();
+    super.dispose();
+  }
+
+  void _maybeCelebrate(int completed, int total) {
+    if (total == 0) {
+      _prevCompleted = completed;
+      return;
+    }
+    final prev = _prevCompleted;
+    if (prev != null && prev < total && completed == total) {
+      _confetti.play();
+    }
+    _prevCompleted = completed;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final habitsAsync = ref.watch(activeHabitsProvider);
     final completionsAsync = ref.watch(todayCompletionsProvider);
     final streaksAsync = ref.watch(allStreaksProvider);
@@ -43,45 +79,91 @@ class TodayScreen extends ConsumerWidget {
           ),
         ),
       ),
-      body: habitsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error loading habits: $e')),
-        data: (habits) {
-          if (habits.isEmpty) {
-            return const TemplatePicker();
-          }
-          final completions = completionsAsync.asData?.value ?? const [];
-          final streaks = streaksAsync.asData?.value ?? const [];
-          final completedIds = {for (final c in completions) c.habitId};
-          final streakById = {for (final s in streaks) s.habitId: s};
+      body: Stack(
+        children: [
+          habitsAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Center(child: Text('Error loading habits: $e')),
+            data: (habits) {
+              if (habits.isEmpty) {
+                return const TemplatePicker();
+              }
+              final completions = completionsAsync.asData?.value ?? const [];
+              final streaks = streaksAsync.asData?.value ?? const [];
+              final completedIds = {for (final c in completions) c.habitId};
+              final streakById = {for (final s in streaks) s.habitId: s};
 
-          final buckets = _bucketByTime(habits);
+              final completedCount =
+                  habits.where((h) => completedIds.contains(h.id)).length;
+              final bestCurrentStreak = streaks.isEmpty
+                  ? 0
+                  : streaks
+                      .map((s) => s.currentStreak)
+                      .fold<int>(0, math.max);
 
-          return ListView(
-            padding: const EdgeInsets.only(
-              top: AppSpacing.sm,
-              bottom: AppSpacing.xxl,
-            ),
-            children: [
-              for (final entry in buckets.entries)
-                if (entry.value.isNotEmpty) ...[
-                  _SectionHeader(label: entry.key),
-                  for (final habit in entry.value)
-                    HabitTile(
-                      habit: habit,
-                      streak: streakById[habit.id],
-                      completed: completedIds.contains(habit.id),
-                      onTap: () => _toggle(ref, habit),
-                      onLongPress: () => showHabitActionsSheet(
-                        context,
-                        ref: ref,
-                        habit: habit,
-                      ),
-                    ),
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                _maybeCelebrate(completedCount, habits.length);
+              });
+
+              final buckets = _bucketByTime(habits);
+
+              return ListView(
+                padding: const EdgeInsets.only(
+                  top: AppSpacing.sm,
+                  bottom: AppSpacing.xxl,
+                ),
+                children: [
+                  TodayHeroCard(
+                    completed: completedCount,
+                    total: habits.length,
+                    bestCurrentStreak: bestCurrentStreak,
+                  ),
+                  for (final entry in buckets.entries)
+                    if (entry.value.isNotEmpty) ...[
+                      _SectionHeader(label: entry.key),
+                      for (final habit in entry.value)
+                        HabitTile(
+                          habit: habit,
+                          streak: streakById[habit.id],
+                          completed: completedIds.contains(habit.id),
+                          onTap: () => _toggle(ref, habit),
+                          onLongPress: () => showHabitActionsSheet(
+                            context,
+                            ref: ref,
+                            habit: habit,
+                          ),
+                        ),
+                    ],
                 ],
-            ],
-          );
-        },
+              );
+            },
+          ),
+          IgnorePointer(
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ConfettiWidget(
+                confettiController: _confetti,
+                blastDirection: math.pi / 2,
+                blastDirectionality: BlastDirectionality.explosive,
+                emissionFrequency: 0.05,
+                numberOfParticles: 24,
+                maxBlastForce: 28,
+                minBlastForce: 12,
+                gravity: 0.25,
+                shouldLoop: false,
+                colors: const [
+                  Color(0xFF6750A4),
+                  Color(0xFF1E88E5),
+                  Color(0xFF43A047),
+                  Color(0xFFE53935),
+                  Color(0xFFFB8C00),
+                  Color(0xFF8E24AA),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -142,4 +224,3 @@ class _SectionHeader extends StatelessWidget {
     );
   }
 }
-
