@@ -1,170 +1,155 @@
 import 'dart:math' as math;
 
-import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../data/database.dart';
 import '../data/date_key.dart';
 import '../data/providers.dart';
+import '../data/tweaks.dart';
+import '../logic/xp.dart';
 import '../theme/tokens.dart';
 import '../widgets/habit_actions_sheet.dart';
-import '../widgets/habit_tile.dart';
+import '../widgets/sprout/companion_card.dart';
+import '../widgets/sprout/habit_row.dart';
+import '../widgets/sprout/streak_chip.dart';
+import '../widgets/sprout/xp_ring.dart';
 import '../widgets/template_picker.dart';
-import '../widgets/today_hero_card.dart';
 
-class TodayScreen extends ConsumerStatefulWidget {
+class TodayScreen extends ConsumerWidget {
   const TodayScreen({super.key});
 
   @override
-  ConsumerState<TodayScreen> createState() => _TodayScreenState();
-}
-
-class _TodayScreenState extends ConsumerState<TodayScreen> {
-  late final ConfettiController _confetti;
-  int? _prevCompleted;
-
-  @override
-  void initState() {
-    super.initState();
-    _confetti = ConfettiController(duration: const Duration(seconds: 2));
-  }
-
-  @override
-  void dispose() {
-    _confetti.dispose();
-    super.dispose();
-  }
-
-  void _maybeCelebrate(int completed, int total) {
-    if (total == 0) {
-      _prevCompleted = completed;
-      return;
-    }
-    final prev = _prevCompleted;
-    if (prev != null && prev < total && completed == total) {
-      _confetti.play();
-    }
-    _prevCompleted = completed;
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final habitsAsync = ref.watch(activeHabitsProvider);
-    final completionsAsync = ref.watch(todayCompletionsProvider);
-    final streaksAsync = ref.watch(allStreaksProvider);
-
-    final subtitle = DateFormat('EEEE, MMM d').format(DateTime.now());
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Today'),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(32),
-          child: Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: Padding(
-              padding: const EdgeInsetsDirectional.only(
-                start: AppSpacing.md,
-                bottom: AppSpacing.sm,
-              ),
-              child: Text(
-                subtitle,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-              ),
-            ),
-          ),
+      backgroundColor: SP.cream,
+      body: SafeArea(
+        bottom: false,
+        child: habitsAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Center(child: Text('Error loading habits: $e')),
+          data: (habits) {
+            if (habits.isEmpty) return const TemplatePicker();
+            return _TodayContent(habits: habits);
+          },
         ),
       ),
-      body: Stack(
-        children: [
-          habitsAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(child: Text('Error loading habits: $e')),
-            data: (habits) {
-              if (habits.isEmpty) {
-                return const TemplatePicker();
-              }
-              final completions = completionsAsync.asData?.value ?? const [];
-              final streaks = streaksAsync.asData?.value ?? const [];
-              final completedIds = {for (final c in completions) c.habitId};
-              final streakById = {for (final s in streaks) s.habitId: s};
+    );
+  }
+}
 
-              final completedCount =
-                  habits.where((h) => completedIds.contains(h.id)).length;
-              final bestCurrentStreak = streaks.isEmpty
-                  ? 0
-                  : streaks
-                      .map((s) => s.currentStreak)
-                      .fold<int>(0, math.max);
+class _TodayContent extends ConsumerWidget {
+  const _TodayContent({required this.habits});
 
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (!mounted) return;
-                _maybeCelebrate(completedCount, habits.length);
-              });
+  final List<Habit> habits;
 
-              final buckets = _bucketByTime(habits);
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final tweaks = ref.watch(tweaksProvider);
+    final accent = ref.watch(accentPaletteProvider);
+    final density = ref.watch(densityProvider);
 
-              return ListView(
-                padding: const EdgeInsets.only(
-                  top: AppSpacing.sm,
-                  bottom: AppSpacing.xxl,
-                ),
-                children: [
-                  TodayHeroCard(
-                    completed: completedCount,
-                    total: habits.length,
-                    bestCurrentStreak: bestCurrentStreak,
-                  ),
-                  for (final entry in buckets.entries)
-                    if (entry.value.isNotEmpty) ...[
-                      _SectionHeader(label: entry.key),
-                      for (final habit in entry.value)
-                        HabitTile(
-                          habit: habit,
-                          streak: streakById[habit.id],
-                          completed: completedIds.contains(habit.id),
-                          onTap: () => _toggle(ref, habit),
-                          onLongPress: () => showHabitActionsSheet(
-                            context,
-                            ref: ref,
-                            habit: habit,
-                          ),
-                        ),
-                    ],
-                ],
-              );
-            },
-          ),
-          IgnorePointer(
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: ConfettiWidget(
-                confettiController: _confetti,
-                blastDirection: math.pi / 2,
-                blastDirectionality: BlastDirectionality.explosive,
-                emissionFrequency: 0.05,
-                numberOfParticles: 24,
-                maxBlastForce: 28,
-                minBlastForce: 12,
-                gravity: 0.25,
-                shouldLoop: false,
-                colors: const [
-                  Color(0xFF6750A4),
-                  Color(0xFF1E88E5),
-                  Color(0xFF43A047),
-                  Color(0xFFE53935),
-                  Color(0xFFFB8C00),
-                  Color(0xFF8E24AA),
-                ],
+    final completions =
+        ref.watch(todayCompletionsProvider).asData?.value ?? const [];
+    final streaks = ref.watch(allStreaksProvider).asData?.value ?? const [];
+
+    final completedIds = {for (final c in completions) c.habitId};
+    final completedCount =
+        habits.where((h) => completedIds.contains(h.id)).length;
+    final total = habits.length;
+    final growth = total == 0 ? 0.0 : completedCount / total;
+
+    final bestCurrentStreak = streaks.isEmpty
+        ? 0
+        : streaks.map((s) => s.currentStreak).fold<int>(0, math.max);
+
+    final totalCompletions =
+        streaks.fold<int>(0, (sum, s) => sum + s.totalCompletions);
+    final totalXp = XpMath.totalFor(totalCompletions);
+    final level = XpMath.levelFor(totalXp);
+    final progress = XpMath.progressInLevel(totalXp);
+    final xpToday = completedCount * XpMath.perCompletion;
+
+    final now = DateTime.now();
+    final dateLabel =
+        DateFormat('EEEE · MMM d').format(now).toUpperCase();
+
+    final sorted = [...habits]..sort((a, b) {
+      final aDone = completedIds.contains(a.id) ? 1 : 0;
+      final bDone = completedIds.contains(b.id) ? 1 : 0;
+      if (aDone != bDone) return aDone - bDone; // undone first
+      return a.sortOrder.compareTo(b.sortOrder);
+    });
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 110),
+      children: [
+        _Greeting(
+          dateLabel: dateLabel,
+          timeOfDay: _timeOfDayGreeting(now.hour),
+          accent: accent,
+          density: density,
+          level: level,
+          xpProgress: progress,
+          streak: bestCurrentStreak,
+        ),
+        const SizedBox(height: 16),
+        CompanionCard(
+          companion: tweaks.companion,
+          accent: accent,
+          growth: growth,
+          done: completedCount,
+          total: total,
+          xpToday: xpToday,
+        ),
+        const SizedBox(height: 20),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text(
+              'Today',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontSize: 20,
+                fontWeight: FontWeight.w500,
+                letterSpacing: -0.3,
               ),
             ),
+            Text(
+              '$completedCount/$total done',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: SP.muted,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        for (var i = 0; i < sorted.length; i++) ...[
+          SproutHabitRow(
+            habit: sorted[i],
+            completed: completedIds.contains(sorted[i].id),
+            accent: accent,
+            density: density,
+            onToggle: () => _toggle(ref, sorted[i]),
+            onOpen: () => context.push('/habit/${sorted[i].id}'),
+            onLongPress: () => showHabitActionsSheet(
+              context,
+              ref: ref,
+              habit: sorted[i],
+            ),
           ),
+          if (i < sorted.length - 1) SizedBox(height: density.rowGap),
         ],
-      ),
+        const SizedBox(height: 14),
+        _AddHabitButton(onTap: () => context.push('/create')),
+      ],
     );
   }
 
@@ -177,49 +162,117 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
     );
   }
 
-  Map<String, List<Habit>> _bucketByTime(List<Habit> habits) {
-    final buckets = <String, List<Habit>>{
-      'Morning': [],
-      'Afternoon': [],
-      'Evening': [],
-      'Any time': [],
-    };
-    for (final h in habits) {
-      final m = h.reminderMinutes;
-      if (m == null) {
-        buckets['Any time']!.add(h);
-      } else if (m < 12 * 60) {
-        buckets['Morning']!.add(h);
-      } else if (m < 17 * 60) {
-        buckets['Afternoon']!.add(h);
-      } else {
-        buckets['Evening']!.add(h);
-      }
-    }
-    return buckets;
+  String _timeOfDayGreeting(int hour) {
+    if (hour < 12) return 'Morning';
+    if (hour < 17) return 'Afternoon';
+    return 'Evening';
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.label});
-  final String label;
+class _Greeting extends StatelessWidget {
+  const _Greeting({
+    required this.dateLabel,
+    required this.timeOfDay,
+    required this.accent,
+    required this.density,
+    required this.level,
+    required this.xpProgress,
+    required this.streak,
+  });
+
+  final String dateLabel;
+  final String timeOfDay;
+  final AccentPalette accent;
+  final DensityTokens density;
+  final int level;
+  final double xpProgress;
+  final int streak;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        AppSpacing.md,
-        AppSpacing.md,
-        AppSpacing.xs,
-      ),
-      child: Text(
-        label.toUpperCase(),
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              letterSpacing: 1.2,
-              fontWeight: FontWeight.w600,
-            ),
+    final theme = Theme.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                dateLabel,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: SP.muted,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text.rich(
+                TextSpan(
+                  style: TextStyle(
+                    fontFamily: 'Fraunces',
+                    fontSize: density.headerSize,
+                    fontWeight: FontWeight.w500,
+                    height: 1.1,
+                    letterSpacing: -0.5,
+                    color: SP.cocoa,
+                  ),
+                  children: [
+                    const TextSpan(text: 'Good\n'),
+                    TextSpan(
+                      text: timeOfDay.toLowerCase(),
+                      style: TextStyle(
+                        fontStyle: FontStyle.italic,
+                        color: accent.deep,
+                      ),
+                    ),
+                    const TextSpan(text: '.'),
+                  ],
+                ),
+              ),
+              if (streak > 0) ...[
+                const SizedBox(height: 10),
+                StreakChip(streak: streak, accent: accent),
+              ],
+            ],
+          ),
+        ),
+        XpRing(progress: xpProgress, level: level, accent: accent),
+      ],
+    );
+  }
+}
+
+class _AddHabitButton extends StatelessWidget {
+  const _AddHabitButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: SP.muted,
+            width: 1.5,
+            style: BorderStyle.solid,
+          ),
+        ),
+        alignment: Alignment.center,
+        child: const Text(
+          '+ Add a habit',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: SP.muted,
+            letterSpacing: 0.3,
+          ),
+        ),
       ),
     );
   }

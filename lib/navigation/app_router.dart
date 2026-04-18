@@ -28,6 +28,14 @@ final appRouter = GoRouter(
         return CreateHabitScreen(editingId: id);
       },
     ),
+    GoRoute(
+      path: '/habit/:id',
+      parentNavigatorKey: _rootKey,
+      builder: (context, state) {
+        final id = int.parse(state.pathParameters['id']!);
+        return HabitDetailScreen(habitId: id);
+      },
+    ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) =>
           AppShell(navigationShell: navigationShell),
