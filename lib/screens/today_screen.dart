@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../data/database.dart';
@@ -9,6 +8,7 @@ import '../data/providers.dart';
 import '../theme/tokens.dart';
 import '../widgets/habit_actions_sheet.dart';
 import '../widgets/habit_tile.dart';
+import '../widgets/template_picker.dart';
 
 class TodayScreen extends ConsumerWidget {
   const TodayScreen({super.key});
@@ -48,9 +48,7 @@ class TodayScreen extends ConsumerWidget {
         error: (e, _) => Center(child: Text('Error loading habits: $e')),
         data: (habits) {
           if (habits.isEmpty) {
-            return _EmptyState(
-              onCreate: () => context.go('/create'),
-            );
+            return const TemplatePicker();
           }
           final completions = completionsAsync.asData?.value ?? const [];
           final streaks = streaksAsync.asData?.value ?? const [];
@@ -145,45 +143,3 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.onCreate});
-  final VoidCallback onCreate;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.checklist_rtl,
-              size: 64,
-              color: Theme.of(context).colorScheme.outline,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              'No habits yet',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              'Create your first habit to start building a streak.',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            FilledButton.icon(
-              onPressed: onCreate,
-              icon: const Icon(Icons.add),
-              label: const Text('Create habit'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
